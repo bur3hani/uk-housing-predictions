@@ -1,1 +1,903 @@
-{"metadata":{"kernelspec":{"name":"ir","display_name":"R","language":"R"},"language_info":{"name":"R","codemirror_mode":"r","pygments_lexer":"r","mimetype":"text/x-r-source","file_extension":".r","version":"4.4.0"},"kaggle":{"accelerator":"gpu","dataSources":[{"sourceId":11209107,"sourceType":"datasetVersion","datasetId":6999195}],"dockerImageVersionId":30751,"isInternetEnabled":true,"language":"r","sourceType":"notebook","isGpuEnabled":true}},"nbformat_minor":4,"nbformat":4,"cells":[{"cell_type":"markdown","source":"#  Predicting UK Property Prices Using Machine Learning in R\n\n##  Business Objective\nThe goal of this project is to support real estate professionals, investors, and policymakers in estimating property prices across the UK. By leveraging machine learning models trained on historical housing transaction data, we aim to improve the accuracy and efficiency of property price predictions.\n\n---\n\n##  Data Loading & Initial Exploration\n\nWe'll begin by loading the necessary libraries and reading the pre-cleaned dataset, which contains over 1.6 million property transactions from 1995 to 2023.\n","metadata":{}},{"cell_type":"code","source":"library(tidyverse)\nlibrary(lubridate)\n\n# Load cleaned property data\nproperty_data <- read_csv(\"/kaggle/input/uk-housing-cleaned/property_data_clean.csv\")\n\n# Preview\nglimpse(property_data)\nsummary(property_data)\n","metadata":{"trusted":true,"execution":{"iopub.status.busy":"2025-03-29T19:50:13.757830Z","iopub.execute_input":"2025-03-29T19:50:13.759341Z","iopub.status.idle":"2025-03-29T19:50:26.256688Z","shell.execute_reply":"2025-03-29T19:50:26.255284Z"}},"outputs":[{"name":"stderr","text":"\u001b[1mRows: \u001b[22m\u001b[34m1621679\u001b[39m \u001b[1mColumns: \u001b[22m\u001b[34m18\u001b[39m\n\u001b[36m──\u001b[39m \u001b[1mColumn specification\u001b[22m \u001b[36m────────────────────────────────────────────────────────\u001b[39m\n\u001b[1mDelimiter:\u001b[22m \",\"\n\u001b[31mchr\u001b[39m  (15): Transaction_ID, Postcode, Property_Type, Old_New, Duration, PAON,...\n\u001b[32mdbl\u001b[39m   (2): Price, Year\n\u001b[34mdate\u001b[39m  (1): Date_of_Transfer\n\n\u001b[36mℹ\u001b[39m Use `spec()` to retrieve the full column specification for this data.\n\u001b[36mℹ\u001b[39m Specify the column types or set `show_col_types = FALSE` to quiet this message.\n","output_type":"stream"},{"name":"stdout","text":"Rows: 1,621,679\nColumns: 18\n$ Transaction_ID    \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"{E104A9E7-1D6A-4D7F-B24F-5A064FCE6917}\", \"{748F870E…\n$ Price             \u001b[3m\u001b[90m<dbl>\u001b[39m\u001b[23m 36500, 74000, 13000, 29950, 26500, 52000, 121250, 11…\n$ Date_of_Transfer  \u001b[3m\u001b[90m<date>\u001b[39m\u001b[23m 1995-06-09, 1995-01-12, 1995-04-07, 1995-03-31, 199…\n$ Postcode          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"FY4 1DL\", \"RH2 9NF\", \"CT9 1XR\", \"BH1 4BD\", \"BS23 3D…\n$ Property_Type     \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F…\n$ Old_New           \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"N\", \"Y\", \"N\", \"N\", \"N\", \"Y\", \"N\", \"Y\", \"N\", \"N\", \"N…\n$ Duration          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L…\n$ PAON              \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"CLARENCE COURT\", \"SOMERS PLACE, 83 - 85\", \"ARLINGTO…\n$ SAON              \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"28\", \"FLAT 21\", \"FLAT 7A\", \"FLAT 1\", \"FLAT 8\", \"22\"…\n$ Street            \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"RAWCLIFFE STREET\", \"REIGATE HILL\", \"ALL SAINTS AVEN…\n$ Locality          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE\", \"MARGATE\", \"BOURNEMOUTH\", \"W…\n$ Town_City         \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE\", \"MARGATE\", \"BOURNEMOUTH\", \"W…\n$ District          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE AND BANSTEAD\", \"THANET\", \"BOUR…\n$ County            \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"SURREY\", \"KENT\", \"BOURNEMOUTH\", \"AVON\"…\n$ PPD_Category_Type \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A…\n$ Record_Status     \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A…\n$ Year              \u001b[3m\u001b[90m<dbl>\u001b[39m\u001b[23m 1995, 1995, 1995, 1995, 1995, 1995, 1995, 1995, 1995…\n$ Month             \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"Jun\", \"Jan\", \"Apr\", \"Mar\", \"Dec\", \"Jul\", \"May\", \"No…\n","output_type":"stream"},{"output_type":"display_data","data":{"text/plain":" Transaction_ID         Price           Date_of_Transfer       Postcode        \n Length:1621679     Min.   :      100   Min.   :1995-01-01   Length:1621679    \n Class :character   1st Qu.:    85000   1st Qu.:2001-08-17   Class :character  \n Mode  :character   Median :   141000   Median :2004-10-08   Mode  :character  \n                    Mean   :   189337   Mean   :2005-09-07                     \n                    3rd Qu.:   222000   3rd Qu.:2007-12-03                     \n                    Max.   :330000000   Max.   :2023-04-25                     \n Property_Type        Old_New            Duration             PAON          \n Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n Class :character   Class :character   Class :character   Class :character  \n Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n                                                                            \n                                                                            \n                                                                            \n     SAON              Street            Locality          Town_City        \n Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n Class :character   Class :character   Class :character   Class :character  \n Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n                                                                            \n                                                                            \n                                                                            \n   District            County          PPD_Category_Type  Record_Status     \n Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n Class :character   Class :character   Class :character   Class :character  \n Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n                                                                            \n                                                                            \n                                                                            \n      Year         Month          \n Min.   :1995   Length:1621679    \n 1st Qu.:2001   Class :character  \n Median :2004   Mode  :character  \n Mean   :2005                     \n 3rd Qu.:2007                     \n Max.   :2023                     "},"metadata":{}}],"execution_count":3},{"cell_type":"markdown","source":"## Feature Engineering\n\nWe extract and engineer features that are likely to influence property prices:\n- **Year** and **Month** of transaction (from `Date_of_Transfer`)\n- **Property_Type** and **County** as categorical variables\n\nWe also select a focused subset of variables for modeling.\n","metadata":{}},{"cell_type":"code","source":"# Load required packages\nlibrary(tidyverse)\nlibrary(lubridate)\n\n# Read cleaned dataset\nproperty_data <- read_csv(\"/kaggle/input/uk-housing-cleaned/property_data_clean.csv\")\n\n# Preview structure\nglimpse(property_data)\nsummary(property_data)\n","metadata":{"trusted":true,"execution":{"iopub.status.busy":"2025-03-29T22:32:26.569092Z","iopub.execute_input":"2025-03-29T22:32:26.570456Z","iopub.status.idle":"2025-03-29T22:32:38.439632Z","shell.execute_reply":"2025-03-29T22:32:38.438254Z"}},"outputs":[{"name":"stderr","text":"── \u001b[1mAttaching core tidyverse packages\u001b[22m ──────────────────────── tidyverse 2.0.0 ──\n\u001b[32m✔\u001b[39m \u001b[34mdplyr    \u001b[39m 1.1.4     \u001b[32m✔\u001b[39m \u001b[34mreadr    \u001b[39m 2.1.5\n\u001b[32m✔\u001b[39m \u001b[34mforcats  \u001b[39m 1.0.0     \u001b[32m✔\u001b[39m \u001b[34mstringr  \u001b[39m 1.5.1\n\u001b[32m✔\u001b[39m \u001b[34mggplot2  \u001b[39m 3.5.1     \u001b[32m✔\u001b[39m \u001b[34mtibble   \u001b[39m 3.2.1\n\u001b[32m✔\u001b[39m \u001b[34mlubridate\u001b[39m 1.9.3     \u001b[32m✔\u001b[39m \u001b[34mtidyr    \u001b[39m 1.3.1\n\u001b[32m✔\u001b[39m \u001b[34mpurrr    \u001b[39m 1.0.2     \n── \u001b[1mConflicts\u001b[22m ────────────────────────────────────────── tidyverse_conflicts() ──\n\u001b[31m✖\u001b[39m \u001b[34mdplyr\u001b[39m::\u001b[32mfilter()\u001b[39m masks \u001b[34mstats\u001b[39m::filter()\n\u001b[31m✖\u001b[39m \u001b[34mdplyr\u001b[39m::\u001b[32mlag()\u001b[39m    masks \u001b[34mstats\u001b[39m::lag()\n\u001b[36mℹ\u001b[39m Use the conflicted package (\u001b[3m\u001b[34m<http://conflicted.r-lib.org/>\u001b[39m\u001b[23m) to force all conflicts to become errors\n\u001b[1mRows: \u001b[22m\u001b[34m1621679\u001b[39m \u001b[1mColumns: \u001b[22m\u001b[34m18\u001b[39m\n\u001b[36m──\u001b[39m \u001b[1mColumn specification\u001b[22m \u001b[36m────────────────────────────────────────────────────────\u001b[39m\n\u001b[1mDelimiter:\u001b[22m \",\"\n\u001b[31mchr\u001b[39m  (15): Transaction_ID, Postcode, Property_Type, Old_New, Duration, PAON,...\n\u001b[32mdbl\u001b[39m   (2): Price, Year\n\u001b[34mdate\u001b[39m  (1): Date_of_Transfer\n\n\u001b[36mℹ\u001b[39m Use `spec()` to retrieve the full column specification for this data.\n\u001b[36mℹ\u001b[39m Specify the column types or set `show_col_types = FALSE` to quiet this message.\n","output_type":"stream"},{"name":"stdout","text":"Rows: 1,621,679\nColumns: 18\n$ Transaction_ID    \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"{E104A9E7-1D6A-4D7F-B24F-5A064FCE6917}\", \"{748F870E…\n$ Price             \u001b[3m\u001b[90m<dbl>\u001b[39m\u001b[23m 36500, 74000, 13000, 29950, 26500, 52000, 121250, 11…\n$ Date_of_Transfer  \u001b[3m\u001b[90m<date>\u001b[39m\u001b[23m 1995-06-09, 1995-01-12, 1995-04-07, 1995-03-31, 199…\n$ Postcode          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"FY4 1DL\", \"RH2 9NF\", \"CT9 1XR\", \"BH1 4BD\", \"BS23 3D…\n$ Property_Type     \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F…\n$ Old_New           \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"N\", \"Y\", \"N\", \"N\", \"N\", \"Y\", \"N\", \"Y\", \"N\", \"N\", \"N…\n$ Duration          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L…\n$ PAON              \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"CLARENCE COURT\", \"SOMERS PLACE, 83 - 85\", \"ARLINGTO…\n$ SAON              \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"28\", \"FLAT 21\", \"FLAT 7A\", \"FLAT 1\", \"FLAT 8\", \"22\"…\n$ Street            \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"RAWCLIFFE STREET\", \"REIGATE HILL\", \"ALL SAINTS AVEN…\n$ Locality          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE\", \"MARGATE\", \"BOURNEMOUTH\", \"W…\n$ Town_City         \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE\", \"MARGATE\", \"BOURNEMOUTH\", \"W…\n$ District          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE AND BANSTEAD\", \"THANET\", \"BOUR…\n$ County            \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"SURREY\", \"KENT\", \"BOURNEMOUTH\", \"AVON\"…\n$ PPD_Category_Type \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A…\n$ Record_Status     \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A…\n$ Year              \u001b[3m\u001b[90m<dbl>\u001b[39m\u001b[23m 1995, 1995, 1995, 1995, 1995, 1995, 1995, 1995, 1995…\n$ Month             \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"Jun\", \"Jan\", \"Apr\", \"Mar\", \"Dec\", \"Jul\", \"May\", \"No…\n","output_type":"stream"},{"output_type":"display_data","data":{"text/plain":" Transaction_ID         Price           Date_of_Transfer       Postcode        \n Length:1621679     Min.   :      100   Min.   :1995-01-01   Length:1621679    \n Class :character   1st Qu.:    85000   1st Qu.:2001-08-17   Class :character  \n Mode  :character   Median :   141000   Median :2004-10-08   Mode  :character  \n                    Mean   :   189337   Mean   :2005-09-07                     \n                    3rd Qu.:   222000   3rd Qu.:2007-12-03                     \n                    Max.   :330000000   Max.   :2023-04-25                     \n Property_Type        Old_New            Duration             PAON          \n Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n Class :character   Class :character   Class :character   Class :character  \n Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n                                                                            \n                                                                            \n                                                                            \n     SAON              Street            Locality          Town_City        \n Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n Class :character   Class :character   Class :character   Class :character  \n Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n                                                                            \n                                                                            \n                                                                            \n   District            County          PPD_Category_Type  Record_Status     \n Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n Class :character   Class :character   Class :character   Class :character  \n Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n                                                                            \n                                                                            \n                                                                            \n      Year         Month          \n Min.   :1995   Length:1621679    \n 1st Qu.:2001   Class :character  \n Median :2004   Mode  :character  \n Mean   :2005                     \n 3rd Qu.:2007                     \n Max.   :2023                     "},"metadata":{}}],"execution_count":3},{"cell_type":"code","source":"# Prepare dataset\nmodel_data <- property_data %>%\n  mutate(\n    Year = year(Date_of_Transfer),\n    Month = month(Date_of_Transfer),\n    Property_Type = as.factor(Property_Type),\n    County = as.factor(County)\n  ) %>%\n  select(Price, Property_Type, County, Year, Month) %>%\n  na.omit()\n","metadata":{"trusted":true,"execution":{"iopub.status.busy":"2025-03-29T22:33:01.470240Z","iopub.execute_input":"2025-03-29T22:33:01.471660Z","iopub.status.idle":"2025-03-29T22:33:03.350409Z","shell.execute_reply":"2025-03-29T22:33:03.348792Z"}},"outputs":[],"execution_count":4},{"cell_type":"code","source":"#Feature Engineering\nmodel_data <- property_data %>%\n  mutate(\n    Year = year(Date_of_Transfer),\n    Month = month(Date_of_Transfer),\n    Property_Type = as.factor(Property_Type),\n    County = as.factor(County)\n  ) %>%\n  select(Price, Property_Type, County, Year, Month) %>%\n  na.omit()","metadata":{"trusted":true,"execution":{"iopub.status.busy":"2025-03-29T19:50:26.259713Z","iopub.execute_input":"2025-03-29T19:50:26.260883Z","iopub.status.idle":"2025-03-29T19:50:28.597401Z","shell.execute_reply":"2025-03-29T19:50:28.595761Z"}},"outputs":[],"execution_count":4},{"cell_type":"markdown","source":"## Train-Test Split\n\nWe partition the dataset into training (80%) and test (20%) sets using stratified sampling based on the `Price` variable.\n","metadata":{}},{"cell_type":"code","source":"#Train-Test Split\nlibrary(caret)\n\nset.seed(42)\ntrain_index <- createDataPartition(model_data$Price, p = 0.8, list = FALSE)\ntrain_data <- model_data[train_index, ]\ntest_data <- model_data[-train_index, ]","metadata":{"trusted":true,"execution":{"iopub.status.busy":"2025-03-29T19:50:28.599728Z","iopub.execute_input":"2025-03-29T19:50:28.600916Z","iopub.status.idle":"2025-03-29T19:50:31.773032Z","shell.execute_reply":"2025-03-29T19:50:31.771372Z"}},"outputs":[{"name":"stderr","text":"Loading required package: lattice\n\n\nAttaching package: ‘caret’\n\n\nThe following object is masked from ‘package:purrr’:\n\n    lift\n\n\nThe following object is masked from ‘package:httr’:\n\n    progress\n\n\n","output_type":"stream"}],"execution_count":5},{"cell_type":"code","source":"# Load caret for data splitting\nlibrary(caret)\n\n# Set seed for reproducibility\nset.seed(42)\n\n# Create partition\ntrain_index <- createDataPartition(model_data$Price, p = 0.8, list = FALSE)\ntrain_data <- model_data[train_index, ]|\ntest_data <- model_data[-train_index, ]","metadata":{"trusted":true,"execution":{"iopub.status.busy":"2025-03-29T22:35:48.124164Z","iopub.execute_input":"2025-03-29T22:35:48.125571Z","iopub.status.idle":"2025-03-29T22:35:49.518487Z","shell.execute_reply":"2025-03-29T22:35:49.516910Z"}},"outputs":[{"ename":"ERROR","evalue":"Error in model_data[train_index, ] | test_data <- model_data[-train_index, : could not find function \"|<-\"\n","traceback":["Error in model_data[train_index, ] | test_data <- model_data[-train_index, : could not find function \"|<-\"\nTraceback:\n"],"output_type":"error"}],"execution_count":7},{"cell_type":"markdown","source":"## Model Training: Random Forest\n\nTo build a robust non-linear model, we use the `Random Forest` algorithm. Due to the high cardinality of the `County` variable (many levels), we exclude it for the Random Forest model. We later retrain using `ranger`, a more efficient implementation, allowing high-cardinality factors.\n","metadata":{}},{"cell_type":"code","source":"# Drop County due to factor level limit in randomForest\ntrain_data_rf <- train_data %>% select(-County)\ntest_data_rf <- test_data %>% select(-County)\n\n# Load randomForest package\nlibrary(randomForest)\n\n# Train Random Forest model\nrf_model <- randomForest(\n  Price ~ .,\n  data = train_data_rf,\n  ntree = 100,\n  importance = TRUE\n)\n","metadata":{"trusted":true,"execution":{"iopub.status.busy":"2025-03-29T22:36:53.562467Z","iopub.execute_input":"2025-03-29T22:36:53.563993Z","iopub.status.idle":"2025-03-29T22:51:42.716524Z","shell.execute_reply":"2025-03-29T22:51:42.714765Z"}},"outputs":[{"name":"stderr","text":"randomForest 4.7-1.1\n\nType rfNews() to see new features/changes/bug fixes.\n\n\nAttaching package: ‘randomForest’\n\n\nThe following object is masked from ‘package:dplyr’:\n\n    combine\n\n\nThe following object is masked from ‘package:ggplot2’:\n\n    margin\n\n\n","output_type":"stream"}],"execution_count":8},{"cell_type":"code","source":"","metadata":{"trusted":true},"outputs":[],"execution_count":null}]}
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "e348957a",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003559,
+     "end_time": "2025-03-30T00:03:01.433331",
+     "exception": false,
+     "start_time": "2025-03-30T00:03:01.429772",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "#  Predicting UK Property Prices Using Machine Learning in R\n",
+    "\n",
+    "##  Business Objective\n",
+    "The goal of this project is to support real estate professionals, investors, and policymakers in estimating property prices across the UK. By leveraging machine learning models trained on historical housing transaction data, we aim to improve the accuracy and efficiency of property price predictions.\n",
+    "\n",
+    "---\n",
+    "\n",
+    "##  Data Loading & Initial Exploration\n",
+    "\n",
+    "We'll begin by loading the necessary libraries and reading the pre-cleaned dataset, which contains over 1.6 million property transactions from 1995 to 2023.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "85b57f57",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-03-30T00:03:01.442354Z",
+     "iopub.status.busy": "2025-03-30T00:03:01.440594Z",
+     "iopub.status.idle": "2025-03-30T00:03:13.598232Z",
+     "shell.execute_reply": "2025-03-30T00:03:13.596237Z"
+    },
+    "papermill": {
+     "duration": 12.164817,
+     "end_time": "2025-03-30T00:03:13.601190",
+     "exception": false,
+     "start_time": "2025-03-30T00:03:01.436373",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "── \u001b[1mAttaching core tidyverse packages\u001b[22m ──────────────────────── tidyverse 2.0.0 ──\n",
+      "\u001b[32m✔\u001b[39m \u001b[34mdplyr    \u001b[39m 1.1.4     \u001b[32m✔\u001b[39m \u001b[34mreadr    \u001b[39m 2.1.5\n",
+      "\u001b[32m✔\u001b[39m \u001b[34mforcats  \u001b[39m 1.0.0     \u001b[32m✔\u001b[39m \u001b[34mstringr  \u001b[39m 1.5.1\n",
+      "\u001b[32m✔\u001b[39m \u001b[34mggplot2  \u001b[39m 3.5.1     \u001b[32m✔\u001b[39m \u001b[34mtibble   \u001b[39m 3.2.1\n",
+      "\u001b[32m✔\u001b[39m \u001b[34mlubridate\u001b[39m 1.9.3     \u001b[32m✔\u001b[39m \u001b[34mtidyr    \u001b[39m 1.3.1\n",
+      "\u001b[32m✔\u001b[39m \u001b[34mpurrr    \u001b[39m 1.0.2     \n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "── \u001b[1mConflicts\u001b[22m ────────────────────────────────────────── tidyverse_conflicts() ──\n",
+      "\u001b[31m✖\u001b[39m \u001b[34mdplyr\u001b[39m::\u001b[32mfilter()\u001b[39m masks \u001b[34mstats\u001b[39m::filter()\n",
+      "\u001b[31m✖\u001b[39m \u001b[34mdplyr\u001b[39m::\u001b[32mlag()\u001b[39m    masks \u001b[34mstats\u001b[39m::lag()\n",
+      "\u001b[36mℹ\u001b[39m Use the conflicted package (\u001b[3m\u001b[34m<http://conflicted.r-lib.org/>\u001b[39m\u001b[23m) to force all conflicts to become errors\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\u001b[1mRows: \u001b[22m\u001b[34m1621679\u001b[39m \u001b[1mColumns: \u001b[22m\u001b[34m18\u001b[39m\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\u001b[36m──\u001b[39m \u001b[1mColumn specification\u001b[22m \u001b[36m────────────────────────────────────────────────────────\u001b[39m\n",
+      "\u001b[1mDelimiter:\u001b[22m \",\"\n",
+      "\u001b[31mchr\u001b[39m  (15): Transaction_ID, Postcode, Property_Type, Old_New, Duration, PAON,...\n",
+      "\u001b[32mdbl\u001b[39m   (2): Price, Year\n",
+      "\u001b[34mdate\u001b[39m  (1): Date_of_Transfer\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "\u001b[36mℹ\u001b[39m Use `spec()` to retrieve the full column specification for this data.\n",
+      "\u001b[36mℹ\u001b[39m Specify the column types or set `show_col_types = FALSE` to quiet this message.\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Rows: 1,621,679\n",
+      "Columns: 18\n",
+      "$ Transaction_ID    \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"{E104A9E7-1D6A-4D7F-B24F-5A064FCE6917}\", \"{748F870E…\n",
+      "$ Price             \u001b[3m\u001b[90m<dbl>\u001b[39m\u001b[23m 36500, 74000, 13000, 29950, 26500, 52000, 121250, 11…\n",
+      "$ Date_of_Transfer  \u001b[3m\u001b[90m<date>\u001b[39m\u001b[23m 1995-06-09, 1995-01-12, 1995-04-07, 1995-03-31, 199…\n",
+      "$ Postcode          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"FY4 1DL\", \"RH2 9NF\", \"CT9 1XR\", \"BH1 4BD\", \"BS23 3D…\n",
+      "$ Property_Type     \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F…\n",
+      "$ Old_New           \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"N\", \"Y\", \"N\", \"N\", \"N\", \"Y\", \"N\", \"Y\", \"N\", \"N\", \"N…\n",
+      "$ Duration          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L…\n",
+      "$ PAON              \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"CLARENCE COURT\", \"SOMERS PLACE, 83 - 85\", \"ARLINGTO…\n",
+      "$ SAON              \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"28\", \"FLAT 21\", \"FLAT 7A\", \"FLAT 1\", \"FLAT 8\", \"22\"…\n",
+      "$ Street            \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"RAWCLIFFE STREET\", \"REIGATE HILL\", \"ALL SAINTS AVEN…\n",
+      "$ Locality          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE\", \"MARGATE\", \"BOURNEMOUTH\", \"W…\n",
+      "$ Town_City         \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE\", \"MARGATE\", \"BOURNEMOUTH\", \"W…\n",
+      "$ District          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE AND BANSTEAD\", \"THANET\", \"BOUR…\n",
+      "$ County            \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"SURREY\", \"KENT\", \"BOURNEMOUTH\", \"AVON\"…\n",
+      "$ PPD_Category_Type \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A…\n",
+      "$ Record_Status     \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A…\n",
+      "$ Year              \u001b[3m\u001b[90m<dbl>\u001b[39m\u001b[23m 1995, 1995, 1995, 1995, 1995, 1995, 1995, 1995, 1995…\n",
+      "$ Month             \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"Jun\", \"Jan\", \"Apr\", \"Mar\", \"Dec\", \"Jul\", \"May\", \"No…\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       " Transaction_ID         Price           Date_of_Transfer       Postcode        \n",
+       " Length:1621679     Min.   :      100   Min.   :1995-01-01   Length:1621679    \n",
+       " Class :character   1st Qu.:    85000   1st Qu.:2001-08-17   Class :character  \n",
+       " Mode  :character   Median :   141000   Median :2004-10-08   Mode  :character  \n",
+       "                    Mean   :   189337   Mean   :2005-09-07                     \n",
+       "                    3rd Qu.:   222000   3rd Qu.:2007-12-03                     \n",
+       "                    Max.   :330000000   Max.   :2023-04-25                     \n",
+       " Property_Type        Old_New            Duration             PAON          \n",
+       " Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n",
+       " Class :character   Class :character   Class :character   Class :character  \n",
+       " Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "     SAON              Street            Locality          Town_City        \n",
+       " Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n",
+       " Class :character   Class :character   Class :character   Class :character  \n",
+       " Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "   District            County          PPD_Category_Type  Record_Status     \n",
+       " Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n",
+       " Class :character   Class :character   Class :character   Class :character  \n",
+       " Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "      Year         Month          \n",
+       " Min.   :1995   Length:1621679    \n",
+       " 1st Qu.:2001   Class :character  \n",
+       " Median :2004   Mode  :character  \n",
+       " Mean   :2005                     \n",
+       " 3rd Qu.:2007                     \n",
+       " Max.   :2023                     "
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "library(tidyverse)\n",
+    "library(lubridate)\n",
+    "\n",
+    "# Load cleaned property data\n",
+    "property_data <- read_csv(\"/kaggle/input/uk-housing-cleaned/property_data_clean.csv\")\n",
+    "\n",
+    "# Preview\n",
+    "glimpse(property_data)\n",
+    "summary(property_data)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a27d0608",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003401,
+     "end_time": "2025-03-30T00:03:13.608650",
+     "exception": false,
+     "start_time": "2025-03-30T00:03:13.605249",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Feature Engineering\n",
+    "\n",
+    "We extract and engineer features that are likely to influence property prices:\n",
+    "- **Year** and **Month** of transaction (from `Date_of_Transfer`)\n",
+    "- **Property_Type** and **County** as categorical variables\n",
+    "\n",
+    "We also select a focused subset of variables for modeling.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "0961924c",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-03-30T00:03:13.641551Z",
+     "iopub.status.busy": "2025-03-30T00:03:13.616351Z",
+     "iopub.status.idle": "2025-03-30T00:03:21.102896Z",
+     "shell.execute_reply": "2025-03-30T00:03:21.101474Z"
+    },
+    "papermill": {
+     "duration": 7.492752,
+     "end_time": "2025-03-30T00:03:21.104663",
+     "exception": false,
+     "start_time": "2025-03-30T00:03:13.611911",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\u001b[1mRows: \u001b[22m\u001b[34m1621679\u001b[39m \u001b[1mColumns: \u001b[22m\u001b[34m18\u001b[39m\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\u001b[36m──\u001b[39m \u001b[1mColumn specification\u001b[22m \u001b[36m────────────────────────────────────────────────────────\u001b[39m\n",
+      "\u001b[1mDelimiter:\u001b[22m \",\"\n",
+      "\u001b[31mchr\u001b[39m  (15): Transaction_ID, Postcode, Property_Type, Old_New, Duration, PAON,...\n",
+      "\u001b[32mdbl\u001b[39m   (2): Price, Year\n",
+      "\u001b[34mdate\u001b[39m  (1): Date_of_Transfer\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "\u001b[36mℹ\u001b[39m Use `spec()` to retrieve the full column specification for this data.\n",
+      "\u001b[36mℹ\u001b[39m Specify the column types or set `show_col_types = FALSE` to quiet this message.\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Rows: 1,621,679\n",
+      "Columns: 18\n",
+      "$ Transaction_ID    \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"{E104A9E7-1D6A-4D7F-B24F-5A064FCE6917}\", \"{748F870E…\n",
+      "$ Price             \u001b[3m\u001b[90m<dbl>\u001b[39m\u001b[23m 36500, 74000, 13000, 29950, 26500, 52000, 121250, 11…\n",
+      "$ Date_of_Transfer  \u001b[3m\u001b[90m<date>\u001b[39m\u001b[23m 1995-06-09, 1995-01-12, 1995-04-07, 1995-03-31, 199…\n",
+      "$ Postcode          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"FY4 1DL\", \"RH2 9NF\", \"CT9 1XR\", \"BH1 4BD\", \"BS23 3D…\n",
+      "$ Property_Type     \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F\", \"F…\n",
+      "$ Old_New           \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"N\", \"Y\", \"N\", \"N\", \"N\", \"Y\", \"N\", \"Y\", \"N\", \"N\", \"N…\n",
+      "$ Duration          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L\", \"L…\n",
+      "$ PAON              \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"CLARENCE COURT\", \"SOMERS PLACE, 83 - 85\", \"ARLINGTO…\n",
+      "$ SAON              \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"28\", \"FLAT 21\", \"FLAT 7A\", \"FLAT 1\", \"FLAT 8\", \"22\"…\n",
+      "$ Street            \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"RAWCLIFFE STREET\", \"REIGATE HILL\", \"ALL SAINTS AVEN…\n",
+      "$ Locality          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE\", \"MARGATE\", \"BOURNEMOUTH\", \"W…\n",
+      "$ Town_City         \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE\", \"MARGATE\", \"BOURNEMOUTH\", \"W…\n",
+      "$ District          \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"REIGATE AND BANSTEAD\", \"THANET\", \"BOUR…\n",
+      "$ County            \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"BLACKPOOL\", \"SURREY\", \"KENT\", \"BOURNEMOUTH\", \"AVON\"…\n",
+      "$ PPD_Category_Type \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A…\n",
+      "$ Record_Status     \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A\", \"A…\n",
+      "$ Year              \u001b[3m\u001b[90m<dbl>\u001b[39m\u001b[23m 1995, 1995, 1995, 1995, 1995, 1995, 1995, 1995, 1995…\n",
+      "$ Month             \u001b[3m\u001b[90m<chr>\u001b[39m\u001b[23m \"Jun\", \"Jan\", \"Apr\", \"Mar\", \"Dec\", \"Jul\", \"May\", \"No…\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       " Transaction_ID         Price           Date_of_Transfer       Postcode        \n",
+       " Length:1621679     Min.   :      100   Min.   :1995-01-01   Length:1621679    \n",
+       " Class :character   1st Qu.:    85000   1st Qu.:2001-08-17   Class :character  \n",
+       " Mode  :character   Median :   141000   Median :2004-10-08   Mode  :character  \n",
+       "                    Mean   :   189337   Mean   :2005-09-07                     \n",
+       "                    3rd Qu.:   222000   3rd Qu.:2007-12-03                     \n",
+       "                    Max.   :330000000   Max.   :2023-04-25                     \n",
+       " Property_Type        Old_New            Duration             PAON          \n",
+       " Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n",
+       " Class :character   Class :character   Class :character   Class :character  \n",
+       " Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "     SAON              Street            Locality          Town_City        \n",
+       " Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n",
+       " Class :character   Class :character   Class :character   Class :character  \n",
+       " Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "   District            County          PPD_Category_Type  Record_Status     \n",
+       " Length:1621679     Length:1621679     Length:1621679     Length:1621679    \n",
+       " Class :character   Class :character   Class :character   Class :character  \n",
+       " Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "                                                                            \n",
+       "      Year         Month          \n",
+       " Min.   :1995   Length:1621679    \n",
+       " 1st Qu.:2001   Class :character  \n",
+       " Median :2004   Mode  :character  \n",
+       " Mean   :2005                     \n",
+       " 3rd Qu.:2007                     \n",
+       " Max.   :2023                     "
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Load required packages\n",
+    "library(tidyverse)\n",
+    "library(lubridate)\n",
+    "\n",
+    "# Read cleaned dataset\n",
+    "property_data <- read_csv(\"/kaggle/input/uk-housing-cleaned/property_data_clean.csv\")\n",
+    "\n",
+    "# Preview structure\n",
+    "glimpse(property_data)\n",
+    "summary(property_data)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "a08902d9",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-03-30T00:03:21.114178Z",
+     "iopub.status.busy": "2025-03-30T00:03:21.113066Z",
+     "iopub.status.idle": "2025-03-30T00:03:22.099242Z",
+     "shell.execute_reply": "2025-03-30T00:03:22.097589Z"
+    },
+    "papermill": {
+     "duration": 0.99289,
+     "end_time": "2025-03-30T00:03:22.101262",
+     "exception": false,
+     "start_time": "2025-03-30T00:03:21.108372",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Prepare dataset\n",
+    "model_data <- property_data %>%\n",
+    "  mutate(\n",
+    "    Year = year(Date_of_Transfer),\n",
+    "    Month = month(Date_of_Transfer),\n",
+    "    Property_Type = as.factor(Property_Type),\n",
+    "    County = as.factor(County)\n",
+    "  ) %>%\n",
+    "  select(Price, Property_Type, County, Year, Month) %>%\n",
+    "  na.omit()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "3c3f4b01",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-03-30T00:03:22.110937Z",
+     "iopub.status.busy": "2025-03-30T00:03:22.109679Z",
+     "iopub.status.idle": "2025-03-30T00:03:23.326913Z",
+     "shell.execute_reply": "2025-03-30T00:03:23.325350Z"
+    },
+    "papermill": {
+     "duration": 1.224012,
+     "end_time": "2025-03-30T00:03:23.328874",
+     "exception": false,
+     "start_time": "2025-03-30T00:03:22.104862",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "#Feature Engineering\n",
+    "model_data <- property_data %>%\n",
+    "  mutate(\n",
+    "    Year = year(Date_of_Transfer),\n",
+    "    Month = month(Date_of_Transfer),\n",
+    "    Property_Type = as.factor(Property_Type),\n",
+    "    County = as.factor(County)\n",
+    "  ) %>%\n",
+    "  select(Price, Property_Type, County, Year, Month) %>%\n",
+    "  na.omit()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "54e492f1",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003383,
+     "end_time": "2025-03-30T00:03:23.335733",
+     "exception": false,
+     "start_time": "2025-03-30T00:03:23.332350",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Train-Test Split\n",
+    "\n",
+    "We partition the dataset into training (80%) and test (20%) sets using stratified sampling based on the `Price` variable.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "60fdc5f4",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-03-30T00:03:23.344597Z",
+     "iopub.status.busy": "2025-03-30T00:03:23.343429Z",
+     "iopub.status.idle": "2025-03-30T00:03:27.330083Z",
+     "shell.execute_reply": "2025-03-30T00:03:27.328522Z"
+    },
+    "papermill": {
+     "duration": 3.993823,
+     "end_time": "2025-03-30T00:03:27.332780",
+     "exception": false,
+     "start_time": "2025-03-30T00:03:23.338957",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Loading required package: lattice\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Attaching package: ‘caret’\n",
+      "\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "The following object is masked from ‘package:purrr’:\n",
+      "\n",
+      "    lift\n",
+      "\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "The following object is masked from ‘package:httr’:\n",
+      "\n",
+      "    progress\n",
+      "\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "#Train-Test Split\n",
+    "library(caret)\n",
+    "\n",
+    "set.seed(42)\n",
+    "train_index <- createDataPartition(model_data$Price, p = 0.8, list = FALSE)\n",
+    "train_data <- model_data[train_index, ]\n",
+    "test_data <- model_data[-train_index, ]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "1bb438e3",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003568,
+     "end_time": "2025-03-30T00:03:27.340190",
+     "exception": false,
+     "start_time": "2025-03-30T00:03:27.336622",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Model Training: Random Forest\n",
+    "\n",
+    "To build a robust non-linear model, we use the `Random Forest` algorithm. Due to the high cardinality of the `County` variable (many levels), we exclude it for the Random Forest model. We later retrain using `ranger`, a more efficient implementation, allowing high-cardinality factors.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "9dc93ee0",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-03-30T00:03:27.350297Z",
+     "iopub.status.busy": "2025-03-30T00:03:27.348421Z",
+     "iopub.status.idle": "2025-03-30T00:15:33.649827Z",
+     "shell.execute_reply": "2025-03-30T00:15:33.648150Z"
+    },
+    "papermill": {
+     "duration": 726.30915,
+     "end_time": "2025-03-30T00:15:33.652708",
+     "exception": false,
+     "start_time": "2025-03-30T00:03:27.343558",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "randomForest 4.7-1.1\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Type rfNews() to see new features/changes/bug fixes.\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Attaching package: ‘randomForest’\n",
+      "\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "The following object is masked from ‘package:dplyr’:\n",
+      "\n",
+      "    combine\n",
+      "\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "The following object is masked from ‘package:ggplot2’:\n",
+      "\n",
+      "    margin\n",
+      "\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Drop County due to factor level limit in randomForest\n",
+    "train_data_rf <- train_data %>% select(-County)\n",
+    "test_data_rf <- test_data %>% select(-County)\n",
+    "\n",
+    "# Load randomForest package\n",
+    "library(randomForest)\n",
+    "\n",
+    "# Train Random Forest model\n",
+    "rf_model <- randomForest(\n",
+    "  Price ~ .,\n",
+    "  data = train_data_rf,\n",
+    "  ntree = 100,\n",
+    "  importance = TRUE\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "970685a2",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-03-30T00:15:33.705029Z",
+     "iopub.status.busy": "2025-03-30T00:15:33.703676Z",
+     "iopub.status.idle": "2025-03-30T00:18:45.129733Z",
+     "shell.execute_reply": "2025-03-30T00:18:45.128263Z"
+    },
+    "papermill": {
+     "duration": 191.471118,
+     "end_time": "2025-03-30T00:18:45.131666",
+     "exception": false,
+     "start_time": "2025-03-30T00:15:33.660548",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Installing package into ‘/usr/local/lib/R/site-library’\n",
+      "(as ‘lib’ is unspecified)\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Attaching package: ‘ranger’\n",
+      "\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "The following object is masked from ‘package:randomForest’:\n",
+      "\n",
+      "    importance\n",
+      "\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Growing trees.. Progress: 29%. Estimated remaining time: 1 minute, 15 seconds.\n",
+      "Growing trees.. Progress: 59%. Estimated remaining time: 43 seconds.\n",
+      "Growing trees.. Progress: 88%. Estimated remaining time: 12 seconds.\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. \n",
+       "   32693   123629   156771   190300   239952 71488416 "
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Install and load ranger (efficient random forest)\n",
+    "install.packages(\"ranger\")\n",
+    "library(ranger)\n",
+    "\n",
+    "# Train model with ranger\n",
+    "rf_model <- ranger(\n",
+    "  Price ~ ., \n",
+    "  data = train_data,\n",
+    "  num.trees = 100,\n",
+    "  importance = \"impurity\"\n",
+    ")\n",
+    "\n",
+    "# Make predictions on the test set\n",
+    "rf_preds <- predict(rf_model, data = test_data)$predictions\n",
+    "\n",
+    "# Inspect prediction summary\n",
+    "summary(rf_preds)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a616d618",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004036,
+     "end_time": "2025-03-30T00:18:45.139851",
+     "exception": false,
+     "start_time": "2025-03-30T00:18:45.135815",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "##  Model Evaluation\n",
+    "\n",
+    "We assess the model's predictive performance using standard regression metrics:\n",
+    "\n",
+    "- **Mean Absolute Error (MAE)**\n",
+    "- **Root Mean Squared Error (RMSE)**\n",
+    "- **R-squared (R²)**\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "1c999700",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-03-30T00:18:45.159022Z",
+     "iopub.status.busy": "2025-03-30T00:18:45.157289Z",
+     "iopub.status.idle": "2025-03-30T00:18:45.424943Z",
+     "shell.execute_reply": "2025-03-30T00:18:45.423420Z"
+    },
+    "papermill": {
+     "duration": 0.282529,
+     "end_time": "2025-03-30T00:18:45.426770",
+     "exception": false,
+     "start_time": "2025-03-30T00:18:45.144241",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Attaching package: ‘Metrics’\n",
+      "\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "The following objects are masked from ‘package:caret’:\n",
+      "\n",
+      "    precision, recall\n",
+      "\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "MAE: 87836.97 \n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "RMSE: 776302.3 \n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "R²: 0.2324 \n"
+     ]
+    }
+   ],
+   "source": [
+    "# Load metrics package\n",
+    "library(Metrics)\n",
+    "\n",
+    "# True vs predicted values\n",
+    "actual <- test_data$Price\n",
+    "\n",
+    "# Evaluation metrics\n",
+    "mae_val <- mae(actual, rf_preds)\n",
+    "rmse_val <- rmse(actual, rf_preds)\n",
+    "r2_val <- 1 - sum((rf_preds - actual)^2) / sum((actual - mean(actual))^2)\n",
+    "\n",
+    "# Output metrics\n",
+    "cat(\"MAE:\", round(mae_val, 2), \"\\n\")\n",
+    "cat(\"RMSE:\", round(rmse_val, 2), \"\\n\")\n",
+    "cat(\"R²:\", round(r2_val, 4), \"\\n\")\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "173e8142",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004253,
+     "end_time": "2025-03-30T00:18:45.435373",
+     "exception": false,
+     "start_time": "2025-03-30T00:18:45.431120",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "##  Model Evaluation\n",
+    "\n",
+    "The model’s performance was assessed using standard regression metrics on the test dataset:\n",
+    "\n",
+    "| Metric | Value |\n",
+    "|--------|--------|\n",
+    "| **Mean Absolute Error (MAE)** | £87,836.97 |\n",
+    "| **Root Mean Squared Error (RMSE)** | £776,302.30 |\n",
+    "| **R-squared (R²)** | 0.2324 |\n",
+    "\n",
+    " **Interpretation:**\n",
+    "- The MAE indicates that, on average, the model’s predictions deviate from actual prices by around **£87.8K**.\n",
+    "- RMSE is higher due to large errors in some predictions, indicating potential outliers or high price variability.\n",
+    "- R² of **0.2324** means the model explains ~23% of the variance in property prices — decent given the simplicity of features.\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "cf0f8c0d",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004789,
+     "end_time": "2025-03-30T00:18:45.444422",
+     "exception": false,
+     "start_time": "2025-03-30T00:18:45.439633",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "##  Conclusion\n",
+    "\n",
+    "- We developed a machine learning pipeline to predict **UK property prices** using historical data.\n",
+    "- After feature engineering and model training with **Random Forests** (`ranger`), we achieved moderate predictive power.\n",
+    "- The strongest predictors included **property type**, **year**, **month**, and **county**.\n",
+    "\n",
+    " **Next Steps:**\n",
+    "- Add geospatial and economic indicators (e.g., location coordinates, interest rates).\n",
+    "- Tune hyperparameters using cross-validation for better generalization.\n",
+    "- Deploy the model via an API or interactive dashboard (e.g., Shiny or Plumber).\n",
+    "\n",
+    "---\n",
+    "\n",
+    " **Project Status:** Complete  \n",
+    " **Author:** *(Your Name)*  \n",
+    " **Date:** 2025  \n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "gpu",
+   "dataSources": [
+    {
+     "datasetId": 6999195,
+     "sourceId": 11209107,
+     "sourceType": "datasetVersion"
+    }
+   ],
+   "dockerImageVersionId": 30751,
+   "isGpuEnabled": true,
+   "isInternetEnabled": true,
+   "language": "r",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "R",
+   "language": "R",
+   "name": "ir"
+  },
+  "language_info": {
+   "codemirror_mode": "r",
+   "file_extension": ".r",
+   "mimetype": "text/x-r-source",
+   "name": "R",
+   "pygments_lexer": "r",
+   "version": "4.4.0"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 948.270953,
+   "end_time": "2025-03-30T00:18:47.073368",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2025-03-30T00:02:58.802415",
+   "version": "2.6.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
