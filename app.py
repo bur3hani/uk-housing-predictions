@@ -2,9 +2,19 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import os
+import urllib.request
+
+# Load model from Hugging Face if not local
+MODEL_URL = "https://huggingface.co/Bur3hani/UK_Housing_Price_Predictor/resolve/main/uk_property_price_model.pkl"
+MODEL_PATH = "uk_property_price_model.pkl"
+
+if not os.path.exists(MODEL_PATH):
+    with st.spinner("Downloading model from Hugging Face..."):
+        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
 
 # Load model
-model = joblib.load("uk_property_price_model.pkl")
+model = joblib.load(MODEL_PATH)
 
 # Title
 st.title("🏡 UK Property Price Predictor")
@@ -13,11 +23,11 @@ st.markdown("Estimate property prices in the UK based on location, type, and tra
 # Sidebar inputs
 st.sidebar.header("Enter Property Details")
 
-# Load sample feature options from training metadata (manually defined for now)
+# Load sample feature options (defined manually for deployment)
 property_types = ['D', 'F', 'O', 'S', 'T']  # Detached, Flat, Other, Semi, Terraced
 counties = [
     'GREATER LONDON', 'WEST MIDLANDS', 'GREATER MANCHESTER', 'WEST YORKSHIRE',
-    'MERSEYSIDE', 'WEST SUSSEX', 'ESSEX', 'SURREY', 'HAMPSHIRE', 'KENT'  # etc.
+    'MERSEYSIDE', 'WEST SUSSEX', 'ESSEX', 'SURREY', 'HAMPSHIRE', 'KENT'
 ]
 
 # User inputs
