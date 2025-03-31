@@ -4,6 +4,8 @@ import joblib
 import os
 import urllib.request
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # -----------------------------
 # Load or download model
@@ -22,6 +24,7 @@ model = joblib.load(MODEL_PATH)
 # -----------------------------
 st.title("🏡 UK Property Price Predictor")
 st.markdown("Estimate UK property prices based on location, type, and sale date.")
+st.markdown("📥 [Download the dataset used in this model](https://www.kaggle.com/datasets/burhanimtengwa/uk-housing-cleaned)")
 
 property_types = ['D', 'F', 'O', 'S', 'T']
 counties = ['GREATER LONDON', 'WEST MIDLANDS', 'GREATER MANCHESTER', 'WEST YORKSHIRE',
@@ -83,3 +86,31 @@ for fy in future_years:
 
 forecast_df = pd.DataFrame(records)
 st.dataframe(forecast_df.style.format({"Price (£)": "£{:,}"}))
+
+# -----------------------------
+# Optional: Show Exploratory Charts
+# -----------------------------
+st.markdown("---")
+st.markdown("### 📊 Exploratory Data Visualizations")
+
+# Simulated EDA DataFrame (or load a sample)
+@st.cache_data
+def load_sample_data():
+    sample_url = "https://raw.githubusercontent.com/datasciencedojo/datasets/master/House%20Prices%20Advanced%20Regression%20Techniques/train.csv"
+    return pd.read_csv(sample_url)
+
+try:
+    sample_df = load_sample_data()
+    st.markdown("**Sample Price Distribution**")
+    fig, ax = plt.subplots()
+    sns.histplot(sample_df['SalePrice'], bins=40, kde=True, ax=ax)
+    st.pyplot(fig)
+
+    st.markdown("**Sale Price by Year Built**")
+    fig2, ax2 = plt.subplots()
+    sns.boxplot(x=sample_df['YearBuilt'], y=sample_df['SalePrice'], ax=ax2)
+    ax2.set_xticks(ax2.get_xticks()[::10])
+    ax2.set_xticklabels(ax2.get_xticks(), rotation=45)
+    st.pyplot(fig2)
+except Exception as e:
+    st.info("🔍 Sample charts are displayed only when sample dataset loads successfully.")
